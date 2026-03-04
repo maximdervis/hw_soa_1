@@ -1,16 +1,45 @@
 version: '3.8'
 
 services:
-  user-service:
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: marketplace
+      POSTGRES_PASSWORD: marketplace
+      POSTGRES_DB: marketplace
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U marketplace"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  flyway:
+    image: flyway/flyway:9
+    depends_on:
+      db:
+        condition: service_healthy
+    command: -url=jdbc:postgresql://db:5432/marketplace -user=marketplace -password=marketplace -connectRetries=60 migrate
+    volumes:
+      - ./flyway/sql:/flyway/sql
+
+  marketplace-api:
     build:
-      context: ./services/user-service
+      context: ./marketplace-api
       dockerfile: Dockerfile
-    container_name: user-service
+    container_name: marketplace-api
     ports:
       - "8000:8000"
+    environment:
+      APP_DATABASE_URL: postgresql://marketplace:marketplace@db:5432/marketplace
+      APP_JWT_SECRET: dev-secret-change-in-prod
+    depends_on:
+      flyway:
+        condition: service_completed_successfully
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
-      interval: 30s
-      timeout: 10s
+      interval: 10s
+      timeout: 5s
       retries: 3
-      start_period: 40s
+      start_period: 10s
