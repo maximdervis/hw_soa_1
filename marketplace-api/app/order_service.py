@@ -4,8 +4,8 @@ from datetime import datetime, timezone
 from app.app_config import settings
 from app import repositories as repo
 from app.exceptions import ApiException
-from generated.openapi_server.models.order_create import OrderCreate
-from generated.openapi_server.models.order_update import OrderUpdate
+from openapi_server.models.order_create import OrderCreate
+from openapi_server.models.order_update import OrderUpdate
 
 
 def _apply_promo_discount(total: float, promo: dict) -> float:

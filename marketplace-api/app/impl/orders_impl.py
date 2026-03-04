@@ -1,14 +1,15 @@
 """Реализация Orders API."""
+from app.auth_context import get_request_token
 from app.database import get_db
 from app import repositories as repo
 from app.order_service import create_order as svc_create_order, update_order as svc_update_order, cancel_order as svc_cancel_order
 from app.exceptions import ApiException
 from app.handlers import _api_error
-from generated.openapi_server.apis.orders_api_base import BaseOrdersApi
-from generated.openapi_server.models.extra_models import TokenModel
-from generated.openapi_server.models.order_response import OrderResponse
-from generated.openapi_server.models.order_item_response import OrderItemResponse
-from generated.openapi_server.models.user_role import UserRole
+from openapi_server.apis.orders_api_base import BaseOrdersApi
+from openapi_server.models.extra_models import TokenModel
+from openapi_server.models.order_response import OrderResponse
+from openapi_server.models.order_item_response import OrderItemResponse
+from openapi_server.models.user_role import UserRole
 
 
 def _dict_to_order_response(d: dict) -> OrderResponse:
@@ -22,6 +23,11 @@ def _dict_to_order_response(d: dict) -> OrderResponse:
 
 class OrdersImpl(BaseOrdersApi):
     async def create_order(self, order_create, token: TokenModel = None):
+        token = token or get_request_token()
+        if token is None:
+            return _api_error("TOKEN_INVALID", "Требуется авторизация", 401)
+        if token.role == UserRole.SELLER:
+            return _api_error("ACCESS_DENIED", "Недостаточно прав", 403)
         uid = int(token.sub)
         try:
             with get_db() as conn:
@@ -30,6 +36,11 @@ class OrdersImpl(BaseOrdersApi):
             raise
 
     async def get_order(self, id, token: TokenModel = None):
+        token = token or get_request_token()
+        if token is None:
+            return _api_error("TOKEN_INVALID", "Требуется авторизация", 401)
+        if token.role == UserRole.SELLER:
+            return _api_error("ACCESS_DENIED", "Недостаточно прав", 403)
         uid, role = int(token.sub), token.role
         with get_db() as conn:
             cur = conn.cursor()
@@ -53,6 +64,11 @@ class OrdersImpl(BaseOrdersApi):
         )
 
     async def update_order(self, id, order_update, token: TokenModel = None):
+        token = token or get_request_token()
+        if token is None:
+            return _api_error("TOKEN_INVALID", "Требуется авторизация", 401)
+        if token.role == UserRole.SELLER:
+            return _api_error("ACCESS_DENIED", "Недостаточно прав", 403)
         uid = int(token.sub)
         try:
             with get_db() as conn:
@@ -61,6 +77,11 @@ class OrdersImpl(BaseOrdersApi):
             raise
 
     async def cancel_order(self, id, token: TokenModel = None):
+        token = token or get_request_token()
+        if token is None:
+            return _api_error("TOKEN_INVALID", "Требуется авторизация", 401)
+        if token.role == UserRole.SELLER:
+            return _api_error("ACCESS_DENIED", "Недостаточно прав", 403)
         uid = int(token.sub)
         try:
             with get_db() as conn:

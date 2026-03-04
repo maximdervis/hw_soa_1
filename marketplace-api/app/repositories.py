@@ -2,7 +2,7 @@
 from decimal import Decimal
 from typing import Optional
 
-from generated.openapi_server.models.product_status import ProductStatus
+from openapi_server.models.product_status import ProductStatus
 
 
 def product_list(

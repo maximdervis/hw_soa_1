@@ -34,6 +34,7 @@ services:
     environment:
       APP_DATABASE_URL: postgresql://marketplace:marketplace@db:5432/marketplace
       APP_JWT_SECRET: dev-secret-change-in-prod
+      APP_ORDER_RATE_LIMIT_MINUTES: 0
     depends_on:
       flyway:
         condition: service_completed_successfully

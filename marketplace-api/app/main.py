@@ -11,7 +11,15 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.auth import decode_token
+from app.auth_context import set_request_token
 from app.exceptions import ApiException
+
+# Регистрация реализаций до импорта роутеров (Base*Api.subclasses)
+import app.impl.auth_impl  # noqa: F401
+import app.impl.products_impl  # noqa: F401
+import app.impl.orders_impl  # noqa: F401
+import app.impl.promo_codes_impl  # noqa: F401
 
 from generated.openapi_server.apis.auth_api import router as AuthApiRouter
 from generated.openapi_server.apis.orders_api import router as OrdersApiRouter
@@ -51,15 +59,28 @@ async def request_logging(request: Request, call_next):
     async def receive():
         return {"type": "http.request", "body": body_bytes}
 
+    # Токен в контекст для impl (генератор не передаёт token в вызовы)
+    auth = request.headers.get("Authorization")
+    if auth and auth.startswith("Bearer "):
+        payload, _ = decode_token(auth[7:].strip())
+        if payload and payload.get("type") == "access":
+            set_request_token(payload["sub"], payload.get("role", "USER"))
+
     req = Request(request.scope, receive) if body_bytes else request
     response = await call_next(req)
     duration_ms = round((time.perf_counter() - start) * 1000)
+    user_id = None
+    if auth and auth.startswith("Bearer "):
+        payload, _ = decode_token(auth[7:].strip())
+        if payload and payload.get("type") == "access":
+            user_id = payload.get("sub")
     log_entry = {
         "request_id": rid,
         "method": request.method,
         "endpoint": request.url.path,
         "status_code": response.status_code,
         "duration_ms": duration_ms,
+        "user_id": user_id,
         "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
     }
     if body_bytes:
@@ -85,6 +106,7 @@ def handle_api_exception(_request: Request, exc: ApiException):
         "PROMO_CODE_MIN_AMOUNT": 422,
         "ORDER_OWNERSHIP_VIOLATION": 403,
         "ORDER_LIMIT_EXCEEDED": 429,
+        "ACCESS_DENIED": 403,
     }
     code = status_map.get(exc.error_code, 400)
     return JSONResponse(
@@ -100,6 +122,12 @@ def handle_validation_error(_request: Request, exc: RequestValidationError):
         status_code=400,
         content={"error_code": "VALIDATION_ERROR", "message": "Ошибка валидации входных данных", "details": details},
     )
+
+
+@app.exception_handler(Exception)
+def handle_unhandled(_request: Request, exc: Exception):
+    logging.exception("Unhandled exception")
+    return JSONResponse(status_code=500, content={"detail": str(exc)})
 
 
 @app.get("/health")

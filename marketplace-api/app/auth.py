@@ -6,17 +6,23 @@ import jwt
 from passlib.context import CryptContext
 
 from app.app_config import settings
-from generated.openapi_server.models.user_role import UserRole
+from openapi_server.models.user_role import UserRole
 
 pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
+def _truncate_password_72(password: str) -> str:
+    """bcrypt limit 72 bytes."""
+    b = password.encode("utf-8")[:72]
+    return b.decode("utf-8", errors="ignore") or password[:72]
+
+
 def hash_password(password: str) -> str:
-    return pwd_ctx.hash(password)
+    return pwd_ctx.hash(_truncate_password_72(password))
 
 
 def verify_password(plain: str, hashed: str) -> bool:
-    return pwd_ctx.verify(plain, hashed)
+    return pwd_ctx.verify(_truncate_password_72(plain), hashed)
 
 
 def create_access_token(user_id: int, role: str) -> tuple[str, int]:

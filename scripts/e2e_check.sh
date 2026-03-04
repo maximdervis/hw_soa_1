@@ -2,19 +2,22 @@
 set -e
 BASE="${1:-http://localhost:8000}"
 API="$BASE/api/v1"
+USER_EMAIL="user_$$_$(date +%s)@test.com"
 
 echo "=== Health ==="
 curl -s "$BASE/health" | head -1
 
 echo "=== Register USER ==="
 REG=$(curl -s -X POST "$API/auth/register" -H "Content-Type: application/json" \
-  -d '{"email":"user@test.com","password":"password123","role":"USER"}')
+  -d "{\"email\":\"$USER_EMAIL\",\"password\":\"password123\",\"role\":\"USER\"}")
 echo "$REG" | head -c 200
 echo ""
 
 echo "=== Register SELLER ==="
-curl -s -X POST "$API/auth/register" -H "Content-Type: application/json" \
-  -d '{"email":"seller@test.com","password":"password123","role":"SELLER"}' > /dev/null
+REG_S=$(curl -s -X POST "$API/auth/register" -H "Content-Type: application/json" \
+  -d '{"email":"seller@test.com","password":"password123","role":"SELLER"}')
+echo "$REG_S" | head -c 200
+echo ""
 
 echo "=== Login as SELLER ==="
 TOKEN=$(curl -s -X POST "$API/auth/login" -H "Content-Type: application/json" \
@@ -29,7 +32,7 @@ echo ""
 
 echo "=== Login as USER ==="
 TOKEN_U=$(curl -s -X POST "$API/auth/login" -H "Content-Type: application/json" \
-  -d '{"email":"user@test.com","password":"password123"}' | python3 -c "import sys,json; print(json.load(sys.stdin).get('access_token',''))")
+  -d "{\"email\":\"$USER_EMAIL\",\"password\":\"password123\"}" | python3 -c "import sys,json; print(json.load(sys.stdin).get('access_token',''))")
 [ -n "$TOKEN_U" ] && echo "User token OK"
 
 echo "=== List products ==="

@@ -29,5 +29,16 @@ else
   docker rm "$CONTAINER_NAME" >/dev/null
 fi
 
+# Подключение реализаций из app.impl (роутеры ищут их в openapi_server.impl)
+IMPL_INIT="$OUT_DIR/impl/__init__.py"
+mkdir -p "$(dirname "$IMPL_INIT")"
+cat > "$IMPL_INIT" << 'EOF'
+# Подключаем реализации из app.impl для регистрации в Base*Api
+from app.impl import auth_impl  # noqa: F401
+from app.impl import products_impl  # noqa: F401
+from app.impl import orders_impl  # noqa: F401
+from app.impl import promo_codes_impl  # noqa: F401
+EOF
+
 echo "Файлы сгенерированы в: $OUT_DIR"
 ls -la "$OUT_DIR"

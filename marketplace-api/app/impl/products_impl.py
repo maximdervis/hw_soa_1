@@ -1,17 +1,18 @@
 """Реализация Products API."""
 from typing import Optional
 
+from app.auth_context import get_request_token
 from app.database import get_db
 from app import repositories as repo
 from app.handlers import _api_error
-from generated.openapi_server.apis.products_api_base import BaseProductsApi
-from generated.openapi_server.models.extra_models import TokenModel
-from generated.openapi_server.models.product_create import ProductCreate
-from generated.openapi_server.models.product_update import ProductUpdate
-from generated.openapi_server.models.product_response import ProductResponse
-from generated.openapi_server.models.product_page import ProductPage
-from generated.openapi_server.models.product_status import ProductStatus
-from generated.openapi_server.models.user_role import UserRole
+from openapi_server.apis.products_api_base import BaseProductsApi
+from openapi_server.models.extra_models import TokenModel
+from openapi_server.models.product_create import ProductCreate
+from openapi_server.models.product_update import ProductUpdate
+from openapi_server.models.product_response import ProductResponse
+from openapi_server.models.product_page import ProductPage
+from openapi_server.models.product_status import ProductStatus
+from openapi_server.models.user_role import UserRole
 
 
 def _seller_can_edit(product_seller_id: Optional[int], user_id: int, role: UserRole) -> bool:
@@ -20,7 +21,16 @@ def _seller_can_edit(product_seller_id: Optional[int], user_id: int, role: UserR
 
 class ProductsImpl(BaseProductsApi):
     async def list_products(self, page, size, status, category, token=None):
-        page, size = page or 0, size or 20
+        token = token or get_request_token()
+        if token is None:
+            return _api_error("TOKEN_INVALID", "Требуется авторизация", 401)
+        try:
+            page = int(page) if page not in (None, "") else 0
+            size = int(size) if size not in (None, "") else 20
+        except (ValueError, TypeError):
+            return _api_error("VALIDATION_ERROR", "page и size должны быть числами", 400)
+        if page < 0 or size < 1 or size > 100:
+            return _api_error("VALIDATION_ERROR", "page >= 0, size от 1 до 100", 400)
         with get_db() as conn:
             cur = conn.cursor()
             rows, total = repo.product_list(cur, page, size, status, category)
@@ -32,6 +42,9 @@ class ProductsImpl(BaseProductsApi):
         )
 
     async def create_product(self, product_create: ProductCreate, token: TokenModel = None):
+        token = token or get_request_token()
+        if token is None:
+            return _api_error("TOKEN_INVALID", "Требуется авторизация", 401)
         uid, role = int(token.sub), token.role
         seller_id = uid if role == UserRole.SELLER else None
         with get_db() as conn:
@@ -43,6 +56,9 @@ class ProductsImpl(BaseProductsApi):
         return ProductResponse(**r)
 
     async def get_product(self, id, token: TokenModel = None):
+        token = token or get_request_token()
+        if token is None:
+            return _api_error("TOKEN_INVALID", "Требуется авторизация", 401)
         with get_db() as conn:
             cur = conn.cursor()
             r = repo.product_get(cur, id)
@@ -51,6 +67,9 @@ class ProductsImpl(BaseProductsApi):
         return ProductResponse(**r)
 
     async def update_product(self, id, product_update: ProductUpdate, token: TokenModel = None):
+        token = token or get_request_token()
+        if token is None:
+            return _api_error("TOKEN_INVALID", "Требуется авторизация", 401)
         uid, role = int(token.sub), token.role
         with get_db() as conn:
             cur = conn.cursor()
@@ -68,6 +87,9 @@ class ProductsImpl(BaseProductsApi):
         return ProductResponse(**r)
 
     async def delete_product(self, id, token: TokenModel = None):
+        token = token or get_request_token()
+        if token is None:
+            return _api_error("TOKEN_INVALID", "Требуется авторизация", 401)
         uid, role = int(token.sub), token.role
         with get_db() as conn:
             cur = conn.cursor()
