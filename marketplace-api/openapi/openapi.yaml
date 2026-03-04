@@ -571,7 +571,7 @@ components:
         price:
           type: number
           format: double
-          minimum: 0
+          minimum: 0.01
           exclusiveMinimum: true
         stock:
           type: integer
@@ -597,7 +597,7 @@ components:
         price:
           type: number
           format: double
-          minimum: 0
+          minimum: 0.01
           exclusiveMinimum: true
         stock:
           type: integer
