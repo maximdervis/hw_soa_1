@@ -1,4 +1,4 @@
-"""Реализация Orders API."""
+"""Orders API implementation."""
 from app.auth_context import get_request_token
 from app.database import get_db
 from app import repositories as repo
@@ -25,9 +25,9 @@ class OrdersImpl(BaseOrdersApi):
     async def create_order(self, order_create, token: TokenModel = None):
         token = token or get_request_token()
         if token is None:
-            return _api_error("TOKEN_INVALID", "Требуется авторизация", 401)
+            return _api_error("TOKEN_INVALID", "Authorization required", 401)
         if token.role == UserRole.SELLER:
-            return _api_error("ACCESS_DENIED", "Недостаточно прав", 403)
+            return _api_error("ACCESS_DENIED", "Insufficient permissions", 403)
         uid = int(token.sub)
         try:
             with get_db() as conn:
@@ -38,17 +38,17 @@ class OrdersImpl(BaseOrdersApi):
     async def get_order(self, id, token: TokenModel = None):
         token = token or get_request_token()
         if token is None:
-            return _api_error("TOKEN_INVALID", "Требуется авторизация", 401)
+            return _api_error("TOKEN_INVALID", "Authorization required", 401)
         if token.role == UserRole.SELLER:
-            return _api_error("ACCESS_DENIED", "Недостаточно прав", 403)
+            return _api_error("ACCESS_DENIED", "Insufficient permissions", 403)
         uid, role = int(token.sub), token.role
         with get_db() as conn:
             cur = conn.cursor()
             order = repo.order_get(cur, id)
         if not order:
-            return _api_error("ORDER_NOT_FOUND", "Заказ не найден", 404)
+            return _api_error("ORDER_NOT_FOUND", "Order not found", 404)
         if role == UserRole.USER and order["user_id"] != uid:
-            return _api_error("ORDER_OWNERSHIP_VIOLATION", "Заказ принадлежит другому пользователю", 403)
+            return _api_error("ORDER_OWNERSHIP_VIOLATION", "Order belongs to another user", 403)
         with get_db() as conn:
             cur = conn.cursor()
             items = repo.order_items_get(cur, id)
@@ -66,9 +66,9 @@ class OrdersImpl(BaseOrdersApi):
     async def update_order(self, id, order_update, token: TokenModel = None):
         token = token or get_request_token()
         if token is None:
-            return _api_error("TOKEN_INVALID", "Требуется авторизация", 401)
+            return _api_error("TOKEN_INVALID", "Authorization required", 401)
         if token.role == UserRole.SELLER:
-            return _api_error("ACCESS_DENIED", "Недостаточно прав", 403)
+            return _api_error("ACCESS_DENIED", "Insufficient permissions", 403)
         uid = int(token.sub)
         try:
             with get_db() as conn:
@@ -79,9 +79,9 @@ class OrdersImpl(BaseOrdersApi):
     async def cancel_order(self, id, token: TokenModel = None):
         token = token or get_request_token()
         if token is None:
-            return _api_error("TOKEN_INVALID", "Требуется авторизация", 401)
+            return _api_error("TOKEN_INVALID", "Authorization required", 401)
         if token.role == UserRole.SELLER:
-            return _api_error("ACCESS_DENIED", "Недостаточно прав", 403)
+            return _api_error("ACCESS_DENIED", "Insufficient permissions", 403)
         uid = int(token.sub)
         try:
             with get_db() as conn:

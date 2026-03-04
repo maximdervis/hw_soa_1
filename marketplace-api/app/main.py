@@ -1,4 +1,4 @@
-"""Точка входа: FastAPI + сгенерированные роуты из OpenAPI."""
+"""FastAPI entry point with generated OpenAPI routes."""
 import json
 import logging
 import time
@@ -15,7 +15,6 @@ from app.auth import decode_token
 from app.auth_context import set_request_token
 from app.exceptions import ApiException
 
-# Регистрация реализаций до импорта роутеров (Base*Api.subclasses)
 import app.impl.auth_impl  # noqa: F401
 import app.impl.products_impl  # noqa: F401
 import app.impl.orders_impl  # noqa: F401
@@ -59,7 +58,6 @@ async def request_logging(request: Request, call_next):
     async def receive():
         return {"type": "http.request", "body": body_bytes}
 
-    # Токен в контекст для impl (генератор не передаёт token в вызовы)
     auth = request.headers.get("Authorization")
     if auth and auth.startswith("Bearer "):
         payload, _ = decode_token(auth[7:].strip())
@@ -120,7 +118,7 @@ def handle_validation_error(_request: Request, exc: RequestValidationError):
     details = {"errors": [{"loc": str(e["loc"]), "msg": e.get("msg", "")} for e in exc.errors()]}
     return JSONResponse(
         status_code=400,
-        content={"error_code": "VALIDATION_ERROR", "message": "Ошибка валидации входных данных", "details": details},
+        content={"error_code": "VALIDATION_ERROR", "message": "Validation error", "details": details},
     )
 
 

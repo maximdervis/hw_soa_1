@@ -1,4 +1,4 @@
-"""Бизнес-ошибки по контракту API."""
+"""API business exceptions."""
 
 
 class ApiException(Exception):

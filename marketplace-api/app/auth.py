@@ -1,4 +1,4 @@
-"""JWT и проверка прав."""
+"""JWT and auth utilities."""
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
@@ -40,7 +40,7 @@ def create_refresh_token(user_id: int) -> str:
 
 
 def decode_token(token: str) -> tuple[Optional[dict], Optional[str]]:
-    """Возвращает (payload, None) при успехе или (None, error_code)."""
+    """Returns (payload, None) on success or (None, error_code)."""
     try:
         return jwt.decode(token, settings.jwt_secret, algorithms=["HS256"]), None
     except jwt.ExpiredSignatureError:

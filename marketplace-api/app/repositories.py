@@ -1,4 +1,4 @@
-"""Репозитории для работы с БД."""
+"""Database repositories."""
 from decimal import Decimal
 from typing import Optional
 

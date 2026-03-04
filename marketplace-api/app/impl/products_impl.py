@@ -1,4 +1,4 @@
-"""Реализация Products API."""
+"""Products API implementation."""
 from typing import Optional
 
 from app.auth_context import get_request_token
@@ -23,14 +23,14 @@ class ProductsImpl(BaseProductsApi):
     async def list_products(self, page, size, status, category, token=None):
         token = token or get_request_token()
         if token is None:
-            return _api_error("TOKEN_INVALID", "Требуется авторизация", 401)
+            return _api_error("TOKEN_INVALID", "Authorization required", 401)
         try:
             page = int(page) if page not in (None, "") else 0
             size = int(size) if size not in (None, "") else 20
         except (ValueError, TypeError):
-            return _api_error("VALIDATION_ERROR", "page и size должны быть числами", 400)
+            return _api_error("VALIDATION_ERROR", "page and size must be integers", 400)
         if page < 0 or size < 1 or size > 100:
-            return _api_error("VALIDATION_ERROR", "page >= 0, size от 1 до 100", 400)
+            return _api_error("VALIDATION_ERROR", "page >= 0, size 1-100", 400)
         with get_db() as conn:
             cur = conn.cursor()
             rows, total = repo.product_list(cur, page, size, status, category)
@@ -44,7 +44,7 @@ class ProductsImpl(BaseProductsApi):
     async def create_product(self, product_create: ProductCreate, token: TokenModel = None):
         token = token or get_request_token()
         if token is None:
-            return _api_error("TOKEN_INVALID", "Требуется авторизация", 401)
+            return _api_error("TOKEN_INVALID", "Authorization required", 401)
         uid, role = int(token.sub), token.role
         seller_id = uid if role == UserRole.SELLER else None
         with get_db() as conn:
@@ -58,26 +58,26 @@ class ProductsImpl(BaseProductsApi):
     async def get_product(self, id, token: TokenModel = None):
         token = token or get_request_token()
         if token is None:
-            return _api_error("TOKEN_INVALID", "Требуется авторизация", 401)
+            return _api_error("TOKEN_INVALID", "Authorization required", 401)
         with get_db() as conn:
             cur = conn.cursor()
             r = repo.product_get(cur, id)
         if not r:
-            return _api_error("PRODUCT_NOT_FOUND", "Товар не найден", 404)
+            return _api_error("PRODUCT_NOT_FOUND", "Product not found", 404)
         return ProductResponse(**r)
 
     async def update_product(self, id, product_update: ProductUpdate, token: TokenModel = None):
         token = token or get_request_token()
         if token is None:
-            return _api_error("TOKEN_INVALID", "Требуется авторизация", 401)
+            return _api_error("TOKEN_INVALID", "Authorization required", 401)
         uid, role = int(token.sub), token.role
         with get_db() as conn:
             cur = conn.cursor()
             existing = repo.product_get(cur, id)
         if not existing:
-            return _api_error("PRODUCT_NOT_FOUND", "Товар не найден", 404)
+            return _api_error("PRODUCT_NOT_FOUND", "Product not found", 404)
         if not _seller_can_edit(existing.get("seller_id"), uid, role):
-            return _api_error("ACCESS_DENIED", "Недостаточно прав", 403)
+            return _api_error("ACCESS_DENIED", "Insufficient permissions", 403)
         updates = product_update.model_dump(exclude_unset=True)
         if "status" in updates:
             updates["status"] = updates["status"].value
@@ -89,15 +89,15 @@ class ProductsImpl(BaseProductsApi):
     async def delete_product(self, id, token: TokenModel = None):
         token = token or get_request_token()
         if token is None:
-            return _api_error("TOKEN_INVALID", "Требуется авторизация", 401)
+            return _api_error("TOKEN_INVALID", "Authorization required", 401)
         uid, role = int(token.sub), token.role
         with get_db() as conn:
             cur = conn.cursor()
             existing = repo.product_get(cur, id)
         if not existing:
-            return _api_error("PRODUCT_NOT_FOUND", "Товар не найден", 404)
+            return _api_error("PRODUCT_NOT_FOUND", "Product not found", 404)
         if not _seller_can_edit(existing.get("seller_id"), uid, role):
-            return _api_error("ACCESS_DENIED", "Недостаточно прав", 403)
+            return _api_error("ACCESS_DENIED", "Insufficient permissions", 403)
         with get_db() as conn:
             cur = conn.cursor()
             repo.product_archive(cur, id)

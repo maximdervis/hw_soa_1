@@ -1,11 +1,10 @@
-"""Контекст текущего запроса: токен из Authorization (для impl, когда генератор не передаёт его)."""
+"""Request-scoped token from Authorization header."""
 from contextvars import ContextVar
 from types import SimpleNamespace
 from typing import Optional
 
 from openapi_server.models.user_role import UserRole
 
-# Объект с .sub (str) и .role (UserRole) — совместим с тем, что ожидает impl
 _request_token_ctx: ContextVar[Optional[SimpleNamespace]] = ContextVar("request_token", default=None)
 
 

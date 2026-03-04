@@ -1,4 +1,4 @@
-"""Бизнес-логика заказов (создание, обновление, отмена)."""
+"""Order business logic: create, update, cancel."""
 from datetime import datetime, timezone
 
 from app.app_config import settings
@@ -16,34 +16,31 @@ def _apply_promo_discount(total: float, promo: dict) -> float:
         if discount > total * 0.7:
             discount = total * 0.7
         return total - discount
-    else:  # FIXED_AMOUNT
+    else:
         return max(0, total - min(val, total))
 
 
 def create_order(conn, user_id: int, body: OrderCreate) -> dict:
     cur = conn.cursor()
 
-    # 1. Rate limit CREATE_ORDER
     last_op = repo.last_user_operation(cur, user_id, "CREATE_ORDER")
     if last_op:
         delta_min = (datetime.now(timezone.utc) - last_op["created_at"].replace(tzinfo=timezone.utc)).total_seconds() / 60
         if delta_min < settings.order_rate_limit_minutes:
-            raise ApiException("ORDER_LIMIT_EXCEEDED", "Превышен лимит частоты создания заказа")
+            raise ApiException("ORDER_LIMIT_EXCEEDED", "Order creation rate limit exceeded")
 
-    # 2. No active order
     if repo.active_order_for_user(cur, user_id):
-        raise ApiException("ORDER_HAS_ACTIVE", "У пользователя уже есть активный заказ")
+        raise ApiException("ORDER_HAS_ACTIVE", "User already has an active order")
 
-    # 3. Check products exist and ACTIVE, and stock
     total_amount = 0.0
     items_with_price = []
     insufficient = []
     for it in body.items:
         prod = repo.product_get(cur, it.product_id)
         if not prod:
-            raise ApiException("PRODUCT_NOT_FOUND", "Товар не найден")
+            raise ApiException("PRODUCT_NOT_FOUND", "Product not found")
         if prod["status"] != "ACTIVE":
-            raise ApiException("PRODUCT_INACTIVE", "Товар неактивен")
+            raise ApiException("PRODUCT_INACTIVE", "Product is inactive")
         if prod["stock"] < it.quantity:
             insufficient.append({"product_id": it.product_id, "requested": it.quantity, "available": prod["stock"]})
         else:
@@ -51,40 +48,37 @@ def create_order(conn, user_id: int, body: OrderCreate) -> dict:
             total_amount += price * it.quantity
             items_with_price.append((it.product_id, it.quantity, price))
     if insufficient:
-        raise ApiException("INSUFFICIENT_STOCK", "Недостаточно товара на складе", {"items": insufficient})
+        raise ApiException("INSUFFICIENT_STOCK", "Insufficient stock", {"items": insufficient})
 
-    # 4. Reserve stock
     for product_id, qty, _ in items_with_price:
         if not repo.product_decrement_stock(cur, product_id, qty):
-            raise ApiException("INSUFFICIENT_STOCK", "Недостаточно товара на складе")
+            raise ApiException("INSUFFICIENT_STOCK", "Insufficient stock")
 
     discount_amount = 0.0
     promo_code_id = None
     if body.promo_code:
         promo = repo.promo_by_code(cur, body.promo_code)
         if not promo or not promo["active"] or promo["current_uses"] >= promo["max_uses"]:
-            raise ApiException("PROMO_CODE_INVALID", "Промокод недействителен")
+            raise ApiException("PROMO_CODE_INVALID", "Invalid promo code")
         now = datetime.now(timezone.utc)
         vf = promo["valid_from"] if promo["valid_from"].tzinfo else promo["valid_from"].replace(tzinfo=timezone.utc)
         vu = promo["valid_until"] if promo["valid_until"].tzinfo else promo["valid_until"].replace(tzinfo=timezone.utc)
         if now < vf or now > vu:
-            raise ApiException("PROMO_CODE_INVALID", "Промокод недействителен")
+            raise ApiException("PROMO_CODE_INVALID", "Invalid promo code")
         if total_amount < float(promo["min_order_amount"]):
-            raise ApiException("PROMO_CODE_MIN_AMOUNT", "Сумма заказа ниже минимальной для промокода")
+            raise ApiException("PROMO_CODE_MIN_AMOUNT", "Order amount below minimum for promo code")
         new_total = _apply_promo_discount(total_amount, promo)
         discount_amount = total_amount - new_total
         total_amount = new_total
         promo_code_id = promo["id"]
         repo.promo_increment_uses(cur, promo["id"])
 
-    # 5. Create order and items
     order = repo.order_create(cur, user_id, total_amount, discount_amount, promo_code_id)
     for product_id, qty, price in items_with_price:
         repo.order_items_insert(cur, order["id"], product_id, qty, price)
 
     repo.user_operation_log(cur, user_id, "CREATE_ORDER")
 
-    # Load full order for response
     return _order_response(cur, order["id"])
 
 
@@ -107,17 +101,17 @@ def update_order(conn, order_id: int, user_id: int, body: OrderUpdate) -> dict:
     cur = conn.cursor()
     order = repo.order_get(cur, order_id)
     if not order:
-        raise ApiException("ORDER_NOT_FOUND", "Заказ не найден")
+        raise ApiException("ORDER_NOT_FOUND", "Order not found")
     if order["user_id"] != user_id:
-        raise ApiException("ORDER_OWNERSHIP_VIOLATION", "Заказ принадлежит другому пользователю")
+        raise ApiException("ORDER_OWNERSHIP_VIOLATION", "Order belongs to another user")
     if order["status"] != "CREATED":
-        raise ApiException("INVALID_STATE_TRANSITION", "Недопустимый переход состояния заказа")
+        raise ApiException("INVALID_STATE_TRANSITION", "Invalid order state transition")
 
     last_op = repo.last_user_operation(cur, user_id, "UPDATE_ORDER")
     if last_op:
         delta_min = (datetime.now(timezone.utc) - last_op["created_at"].replace(tzinfo=timezone.utc)).total_seconds() / 60
         if delta_min < settings.order_rate_limit_minutes:
-            raise ApiException("ORDER_LIMIT_EXCEEDED", "Превышен лимит частоты обновления заказа")
+            raise ApiException("ORDER_LIMIT_EXCEEDED", "Order update rate limit exceeded")
 
     old_items = repo.order_items_get(cur, order_id)
     for i in old_items:
@@ -128,11 +122,11 @@ def update_order(conn, order_id: int, user_id: int, body: OrderUpdate) -> dict:
     for it in body.items:
         prod = repo.product_get(cur, it.product_id)
         if not prod:
-            raise ApiException("PRODUCT_NOT_FOUND", "Товар не найден")
+            raise ApiException("PRODUCT_NOT_FOUND", "Product not found")
         if prod["status"] != "ACTIVE":
-            raise ApiException("PRODUCT_INACTIVE", "Товар неактивен")
+            raise ApiException("PRODUCT_INACTIVE", "Product is inactive")
         if prod["stock"] < it.quantity:
-            raise ApiException("INSUFFICIENT_STOCK", "Недостаточно товара на складе")
+            raise ApiException("INSUFFICIENT_STOCK", "Insufficient stock")
         price = float(prod["price"])
         total_amount += price * it.quantity
         items_with_price.append((it.product_id, it.quantity, price))
@@ -165,11 +159,11 @@ def cancel_order(conn, order_id: int, user_id: int) -> None:
     cur = conn.cursor()
     order = repo.order_get(cur, order_id)
     if not order:
-        raise ApiException("ORDER_NOT_FOUND", "Заказ не найден")
+        raise ApiException("ORDER_NOT_FOUND", "Order not found")
     if order["user_id"] != user_id:
-        raise ApiException("ORDER_OWNERSHIP_VIOLATION", "Заказ принадлежит другому пользователю")
+        raise ApiException("ORDER_OWNERSHIP_VIOLATION", "Order belongs to another user")
     if order["status"] not in ("CREATED", "PAYMENT_PENDING"):
-        raise ApiException("INVALID_STATE_TRANSITION", "Недопустимый переход состояния заказа")
+        raise ApiException("INVALID_STATE_TRANSITION", "Invalid order state transition")
     for i in repo.order_items_get(cur, order_id):
         repo.product_increment_stock(cur, i["product_id"], i["quantity"])
     if order.get("promo_code_id"):

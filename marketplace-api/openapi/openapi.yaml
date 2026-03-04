@@ -2,7 +2,7 @@ openapi: 3.0.3
 info:
   title: Marketplace API
   version: 1.0.0
-  description: API сервиса маркетплейса
+  description: Marketplace API service
 
 servers:
   - url: /api/v1
@@ -11,15 +11,14 @@ servers:
 tags:
   - name: products
     description: |
-      CRUD товаров. Роли: GET — USER, SELLER, ADMIN.
-      POST/PUT/DELETE — SELLER (только свои по seller_id), ADMIN (любые).
+      Product CRUD. GET — USER, SELLER, ADMIN. POST/PUT/DELETE — SELLER (own by seller_id), ADMIN (any).
   - name: orders
     description: |
-      Заказы. POST/GET/PUT/cancel — USER (только свои), ADMIN (любые). SELLER — доступ запрещён.
+      Orders. POST/GET/PUT/cancel — USER (own only), ADMIN (any). SELLER — access denied.
   - name: auth
-    description: Аутентификация (без JWT).
+    description: Authentication (no JWT required).
   - name: promo-codes
-    description: Промокоды. POST — SELLER, ADMIN.
+    description: Promo codes. POST — SELLER, ADMIN.
 
 security:
   - bearerAuth: []
@@ -29,7 +28,7 @@ paths:
     post:
       tags: [auth]
       security: []
-      summary: Регистрация
+      summary: Register
       operationId: register
       requestBody:
         required: true
@@ -39,20 +38,20 @@ paths:
               $ref: '#/components/schemas/RegisterRequest'
       responses:
         '201':
-          description: Успешная регистрация
+          description: Registration successful
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/UserResponse'
         '400':
-          description: Ошибка валидации
+          description: Validation error
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
               example:
                 error_code: VALIDATION_ERROR
-                message: Ошибка валидации
+                message: Validation error
                 details: {}
 
   /auth/login:
@@ -68,13 +67,13 @@ paths:
               $ref: '#/components/schemas/LoginRequest'
       responses:
         '200':
-          description: Успешный вход
+          description: Login successful
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/TokenPair'
         '401':
-          description: Неверные учётные данные
+          description: Invalid credentials
           content:
             application/json:
               schema:
@@ -96,13 +95,13 @@ paths:
               $ref: '#/components/schemas/RefreshRequest'
       responses:
         '200':
-          description: Новая пара токенов
+          description: New token pair
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/TokenPair'
         '401':
-          description: Невалидный refresh token
+          description: Invalid refresh token
           content:
             application/json:
               schema:
@@ -115,7 +114,7 @@ paths:
   /products:
     get:
       tags: [products]
-      summary: Список товаров с пагинацией и фильтрами
+      summary: List products with pagination and filters
       operationId: list_products
       parameters:
         - name: page
@@ -123,13 +122,13 @@ paths:
           schema:
             type: string
             default: "0"
-          description: Номер страницы (0-based), передаётся строкой в query
+          description: Page number (0-based), string in query
         - name: size
           in: query
           schema:
             type: string
             default: "20"
-          description: Размер страницы, передаётся строкой в query
+          description: Page size, string in query
         - name: status
           in: query
           schema:
@@ -140,26 +139,26 @@ paths:
             type: string
       responses:
         '200':
-          description: Список товаров
+          description: Product list
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ProductPage'
         '401':
-          description: Не авторизован
+          description: Unauthorized
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
         '403':
-          description: Доступ запрещён
+          description: Access denied
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
     post:
       tags: [products]
-      summary: Создание товара
+      summary: Create product
       operationId: create_product
       requestBody:
         required: true
@@ -169,42 +168,42 @@ paths:
               $ref: '#/components/schemas/ProductCreate'
       responses:
         '201':
-          description: Товар создан
+          description: Product created
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ProductResponse'
         '400':
-          description: Ошибка валидации
+          description: Validation error
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
               example:
                 error_code: VALIDATION_ERROR
-                message: Ошибка валидации
+                message: Validation error
                 details: {}
         '401':
-          description: Не авторизован
+          description: Unauthorized
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
         '403':
-          description: Доступ запрещён
+          description: Access denied
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
               example:
                 error_code: ACCESS_DENIED
-                message: Недостаточно прав
+                message: Insufficient permissions
                 details: null
 
   /products/{id}:
     get:
       tags: [products]
-      summary: Получение товара по ID
+      summary: Get product by ID
       operationId: get_product
       parameters:
         - name: id
@@ -215,24 +214,24 @@ paths:
             format: int64
       responses:
         '200':
-          description: Товар
+          description: Product
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ProductResponse'
         '404':
-          description: Товар не найден
+          description: Product not found
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
               example:
                 error_code: PRODUCT_NOT_FOUND
-                message: Товар не найден
+                message: Product not found
                 details: null
     put:
       tags: [products]
-      summary: Обновление товара
+      summary: Update product
       operationId: update_product
       parameters:
         - name: id
@@ -249,19 +248,19 @@ paths:
               $ref: '#/components/schemas/ProductUpdate'
       responses:
         '200':
-          description: Товар обновлён
+          description: Product updated
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ProductResponse'
         '400':
-          description: Ошибка валидации
+          description: Validation error
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
         '403':
-          description: Доступ запрещён
+          description: Access denied
           content:
             application/json:
               schema:
@@ -269,7 +268,7 @@ paths:
               example:
                 error_code: ACCESS_DENIED
         '404':
-          description: Товар не найден
+          description: Product not found
           content:
             application/json:
               schema:
@@ -278,7 +277,7 @@ paths:
                 error_code: PRODUCT_NOT_FOUND
     delete:
       tags: [products]
-      summary: Мягкое удаление (ARCHIVED)
+      summary: Soft delete (ARCHIVED)
       operationId: delete_product
       parameters:
         - name: id
@@ -289,9 +288,9 @@ paths:
             format: int64
       responses:
         '204':
-          description: Удалено
+          description: Deleted
         '403':
-          description: Доступ запрещён
+          description: Access denied
           content:
             application/json:
               schema:
@@ -299,7 +298,7 @@ paths:
               example:
                 error_code: ACCESS_DENIED
         '404':
-          description: Товар не найден
+          description: Product not found
           content:
             application/json:
               schema:
@@ -310,7 +309,7 @@ paths:
   /orders:
     post:
       tags: [orders]
-      summary: Создание заказа
+      summary: Create order
       operationId: create_order
       requestBody:
         required: true
@@ -320,56 +319,56 @@ paths:
               $ref: '#/components/schemas/OrderCreate'
       responses:
         '201':
-          description: Заказ создан
+          description: Order created
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/OrderResponse'
         '400':
-          description: Ошибка валидации
+          description: Validation error
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
         '403':
-          description: Доступ запрещён
+          description: Access denied
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
         '404':
-          description: Не найдено
+          description: Not found
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
         '409':
-          description: Конфликт (активный заказ, остатки и т.д.)
+          description: Conflict (active order, stock, etc.)
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
         '422':
-          description: Промокод не применим
+          description: Promo code not applicable
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
         '429':
-          description: Превышен лимит запросов
+          description: Rate limit exceeded
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
               example:
                 error_code: ORDER_LIMIT_EXCEEDED
-                message: Превышен лимит частоты
+                message: Order creation rate limit exceeded
                 details: null
 
   /orders/{id}:
     get:
       tags: [orders]
-      summary: Получение заказа по ID
+      summary: Get order by ID
       operationId: get_order
       parameters:
         - name: id
@@ -380,13 +379,13 @@ paths:
             format: int64
       responses:
         '200':
-          description: Заказ
+          description: Order
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/OrderResponse'
         '403':
-          description: Заказ другого пользователя
+          description: Order belongs to another user
           content:
             application/json:
               schema:
@@ -394,7 +393,7 @@ paths:
               example:
                 error_code: ORDER_OWNERSHIP_VIOLATION
         '404':
-          description: Заказ не найден
+          description: Order not found
           content:
             application/json:
               schema:
@@ -403,7 +402,7 @@ paths:
                 error_code: ORDER_NOT_FOUND
     put:
       tags: [orders]
-      summary: Обновление заказа
+      summary: Update order
       operationId: update_order
       parameters:
         - name: id
@@ -420,31 +419,31 @@ paths:
               $ref: '#/components/schemas/OrderUpdate'
       responses:
         '200':
-          description: Заказ обновлён
+          description: Order updated
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/OrderResponse'
         '403':
-          description: Доступ запрещён
+          description: Access denied
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
         '404':
-          description: Заказ не найден
+          description: Order not found
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
         '409':
-          description: Недопустимое состояние
+          description: Invalid state
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
         '429':
-          description: Превышен лимит запросов
+          description: Rate limit exceeded
           content:
             application/json:
               schema:
@@ -453,7 +452,7 @@ paths:
   /orders/{id}/cancel:
     post:
       tags: [orders]
-      summary: Отмена заказа
+      summary: Cancel order
       operationId: cancel_order
       parameters:
         - name: id
@@ -464,21 +463,21 @@ paths:
             format: int64
       responses:
         '204':
-          description: Заказ отменён
+          description: Order canceled
         '403':
-          description: Доступ запрещён
+          description: Access denied
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
         '404':
-          description: Заказ не найден
+          description: Order not found
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
         '409':
-          description: Недопустимое состояние для отмены
+          description: Invalid state for cancel
           content:
             application/json:
               schema:
@@ -489,7 +488,7 @@ paths:
   /promo-codes:
     post:
       tags: [promo-codes]
-      summary: Создание промокода
+      summary: Create promo code
       operationId: create_promo_code
       requestBody:
         required: true
@@ -499,19 +498,19 @@ paths:
               $ref: '#/components/schemas/PromoCodeCreate'
       responses:
         '201':
-          description: Промокод создан
+          description: Promo code created
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/PromoCodeResponse'
         '400':
-          description: Ошибка валидации
+          description: Validation error
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiError'
         '403':
-          description: Доступ запрещён
+          description: Access denied
           content:
             application/json:
               schema:
@@ -693,7 +692,7 @@ components:
           type: string
         expires_in:
           type: integer
-          description: Секунды до истечения access token
+          description: Seconds until access token expiry
 
     UserRole:
       type: string

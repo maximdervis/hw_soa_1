@@ -1,4 +1,4 @@
-"""Общие хелперы для API (используются из impl)."""
+"""Shared API helpers used by impl."""
 from typing import Any
 
 from fastapi.responses import JSONResponse

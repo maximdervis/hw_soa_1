@@ -1,4 +1,4 @@
-"""Подключение к PostgreSQL."""
+"""PostgreSQL connection."""
 from contextlib import contextmanager
 from typing import Generator
 

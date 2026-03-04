@@ -1,4 +1,4 @@
-"""Реализация Auth API."""
+"""Auth API implementation."""
 from typing import Optional
 
 from fastapi.responses import JSONResponse
@@ -21,7 +21,7 @@ class AuthImpl(BaseAuthApi):
         with get_db() as conn:
             cur = conn.cursor()
             if repo.user_by_email(cur, register_request.email):
-                return _api_error("VALIDATION_ERROR", "Email уже зарегистрирован", 400)
+                return _api_error("VALIDATION_ERROR", "Email already registered", 400)
             user = repo.user_create(cur, register_request.email, hash_password(register_request.password), register_request.role.value)
         role_val = user["role"].value if hasattr(user["role"], "value") else user["role"]
         return UserResponse(id=user["id"], email=user["email"], role=UserRole(role_val))
